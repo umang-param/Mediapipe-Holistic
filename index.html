@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <div id="canvas"></div>
+  <div class="container">
+    <video class="input_video"></video>
+    <div id="3d-scene" style="width: 1280px; height: 720px;"></div>
+    <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+  </div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js'
+
+    // Set up the scene and camera
+    const scene = new THREE.Scene();
+    const threeCamera = new THREE.PerspectiveCamera(75, 1280 / 720, 0.1, 1000);
+    threeCamera.position.z = 5;
+
+    const light = new THREE.HemisphereLight("#FFFFFF", 0x080820, 5);
+    scene.add(light);
+
+    // Set up the renderer
+    const renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(1280, 720);
+    document.getElementById("3d-scene").appendChild(renderer.domElement);
+
+    //Testing............................................................
+    const tLoader = new THREE.TextureLoader().load("/Untitled.svg")
+
+
+
+    // Load the 3D skeletal model
+    let armature;
+    let skeletalModel;
+    const loader = new GLTFLoader();
+    loader.load("public/Skeleton Rig.glb", (gltf) => {
+      skeletalModel = gltf.scene;
+      console.log(skeletalModel)
+      armature = skeletalModel.getObjectByName("Manny_Armature")
+      skeletalModel.position.set(0, -3, 0)
+      skeletalModel.scale.set(0.18, 0.18, 0.18)
+      scene.add(skeletalModel);
+    });
+
+    const landmarkToBoneMapping = {
+      // Add your mapping here, for example:
+      0: "HEAD", // Nose tip
+      // 1: "VERTEBRAE_C1(atlas)", // Left eye inner corner
+      // 2: "VERTEBRAE_C1(atlas)", // Right eye inner corner
+      // 3: "JAW", // Left eye outer corner
+      // 4: "JAW", // Right eye outer corner
+      // 5: "HEAD001", // Left ear
+      // 6: "HEAD001", // Right ear
+      // 7: "MCH_neckIK", // Left shoulder
+      // 8: "MCH_neckIK", // Right shoulder
+      // 9: "JAW", // Left elbow
+      // 10: "HUMERUSR", // Right elbow
+      11: "PIV_SHOULDERL", // Left shoulder
+      12: "PIV_SHOULDERR", // Right shoulder
+      // 11: "HUMERUSL", // Left shoulder
+      // 12: "HUMERUSR", // Right shoulder
+      13: "MCH_elbowL", // Left elbow
+      14: "MCH_elbowR", // Right elbow
+      15: "MCH_armIKtarL", // Left wrist
+      16: "MCH_armIKtarR", // Right wrist
+      // 17: "TIBIAL", // Left ankle
+      // 18: "TIBIAR", // Right ankle
+      // 19: "FOOTL", // Left heel
+      // 20: "FOOTR", // Right heel
+      // 21: "MCH_toeIKtarL", // Left foot index
+      // 22: "MCH_toeIKtarR", // Right foot index
+      25: "MCH_kneeTarL", // Right foot knee
+      26: "MCH_kneeTarR", // Right foot knee
+      27: "CONTROL_FOOTL", // Left Ankle
+      28: "CONTROL_FOOTR", // Right Ankle
+    };
+
+    function updateBonePositions(landmarks) {
+  const scaleFactor = 2;
+      for (const landmarkIndex in landmarkToBoneMapping) {
+        const boneName = landmarkToBoneMapping[landmarkIndex];
+        const bone = armature.getObjectByName(boneName);
+
+        if (bone) {
+          // Get the landmark position
+          const landmarkPosition = landmarks[landmarkIndex];
+
+          // Convert the landmark position to the 3D space of your model
+          const newPosition = new THREE.Vector3(
+            (landmarkPosition.x - 0.5) * scaleFactor,
+            (0.5 - landmarkPosition.y) * scaleFactor,
+            (landmarkPosition.z - 0.5) * scaleFactor
+          );
+
+          // Update the bone position
+          bone.position.copy(newPosition);
+        }
+      }
+    }
+
+
+
+    const videoElement = document.getElementsByClassName('input_video')[0];
+    const canvasElement = document.getElementsByClassName('output_canvas')[0];
+    const canvasCtx = canvasElement.getContext('2d');
+
+    function animateModel(results) {
+      if (!skeletalModel || !results.poseLandmarks) return;
+      // Update the skeletal model based on detected landmarks
+      updateBonePositions(results.poseLandmarks);
+
+      // Continue updating other joints and bones
+    }
+
+
+    function onResults(results) {
+      // console.log(results)
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      if (results.poseLandmarks) {
+        drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS,
+          { color: '#00FFFF', lineWidth: 4 });
+        drawLandmarks(canvasCtx, results.poseLandmarks,
+          { color: '#FF0000', lineWidth: 2 });
+        drawConnectors(canvasCtx, results.faceLandmarks, FACEMESH_TESSELATION,
+          { color: '#C0C0C070', lineWidth: 1 });
+        drawConnectors(canvasCtx, results.leftHandLandmarks, HAND_CONNECTIONS,
+          { color: '#CC0000', lineWidth: 5 });
+        drawLandmarks(canvasCtx, results.leftHandLandmarks,
+          { color: '#00FF00', lineWidth: 2 });
+        drawConnectors(canvasCtx, results.rightHandLandmarks, HAND_CONNECTIONS,
+          { color: '#00CC00', lineWidth: 5 });
+        drawLandmarks(canvasCtx, results.rightHandLandmarks,
+          { color: '#FF0000', lineWidth: 2 });
+      }
+      canvasCtx.restore();
+      // if (skeletalModel) {
+      //   // console.log(skeletalModel)
+      //   const armature = skeletalModel.getObjectByName("Manny_Armature");
+      //   if (armature) {
+      //     // console.log(armature.getObjectByName("MCH_elbowL"));
+      //   }
+      // }
+      // Animate the 3D model
+      animateModel(results);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, threeCamera);
+    }
+    animate();
+
+
+    const holistic = new Holistic({
+      locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
+      }
+    });
+    holistic.setOptions({
+      modelComplexity: 0,
+      smoothLandmarks: true,
+      enableSegmentation: true,
+      smoothSegmentation: true,
+      refineFaceLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    try {
+      holistic.onResults(onResults);
+    }
+    catch (err) {
+      console.log(err)
+      holistic.onResults(onResults);
+    }
+
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await holistic.send({ image: videoElement });
+      },
+      width: 1280,
+      height: 720
+    });
+    camera.start();
+    videoElement.style.display = "none";
+  </script>
+
+</body>
+
+</html>

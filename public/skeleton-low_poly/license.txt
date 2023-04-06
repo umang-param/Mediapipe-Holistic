@@ -1,0 +1,11 @@
+Model Information:
+* title:	Skeleton-Low Poly
+* source:	https://sketchfab.com/3d-models/skeleton-low-poly-ea8f6639138541c083faa0f6eba2f246
+* author:	Everret (https://sketchfab.com/Everret)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Skeleton-Low Poly" (https://sketchfab.com/3d-models/skeleton-low-poly-ea8f6639138541c083faa0f6eba2f246) by Everret (https://sketchfab.com/Everret) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
